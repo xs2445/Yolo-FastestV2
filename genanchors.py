@@ -137,6 +137,9 @@ def main(argv):
 
         line = line.replace('.jpg','.txt')
         line = line.replace('.png','.txt')
+        ##########
+        line = os.path.join(".".join(args.traintxt.split('.')[:-1]), line)
+        ##########
         print(line)
         f2 = open(line)
         for line in f2.readlines():
