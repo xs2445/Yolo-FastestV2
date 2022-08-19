@@ -89,6 +89,9 @@ class TensorDataset():
         with open(self.path, 'r') as f:
             for line in f.readlines():
                 data_path = line.strip()
+                #####
+                data_path = os.path.join(self.path.split('.')[0], data_path)
+                #####
                 if os.path.exists(data_path):
                     img_type = data_path.split(".")[-1]
                     if img_type not in self.img_formats:
