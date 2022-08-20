@@ -103,7 +103,12 @@ class TensorDataset():
 
     def __getitem__(self, index):
         img_path = self.data_list[index]
-        label_path = img_path.split(".")[0] + ".txt"
+        #####
+        if img_path[0] == '.':
+            label_path = ".".join(img_path.split(".")[:-1]) + '.txt'
+        else:
+            label_path = img_path.split(".")[0] + ".txt"
+        #####
 
         # 归一化操作
         img = cv2.imread(img_path)
