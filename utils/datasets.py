@@ -90,10 +90,11 @@ class TensorDataset():
             for line in f.readlines():
                 data_path = line.strip()
                 #####
-                if self.path == '.':
-                    data_path = os.path.join(".".join(self.path.split(".")[:-1]), data_path)
-                else:
-                    data_path = os.path.join(self.path.split(".")[0], data_path)
+                data_path = os.path.join(self.path.replace(".txt", ""), data_path)
+#                 if self.path == '.':
+#                     data_path = os.path.join(".".join(self.path.split(".")[:-1]), data_path)
+#                 else:
+#                     data_path = os.path.join(self.path.split(".")[0], data_path)
                 #####
                 if os.path.exists(data_path):
                     img_type = data_path.split(".")[-1]
