@@ -81,7 +81,10 @@ class ncnnModel:
         self.net = ncnn.Net()
         self.net.load_param(param_path)
         self.net.load_model(bin_path)
-        self.anchor = load_datafile(datafile_path)["anchors"]
+        self.ex = self.net.create_extractor()
+        cfg = load_datafile(datafile_path)
+        self.anchor = cfg["anchors"]
+        self.numAnchor = cfg["anchor_num"]
         self.detThresh = detThresh
         self.nmsThresh = nmsThresh
 
@@ -91,7 +94,7 @@ class ncnnModel:
             outH = mat_out.c
             outW = mat_out.h
             outC = mat_out.w
-            stride = inputShape/outH
+            stride = self.input_shape/outH
             mat_out = np.array(mat_out)     # shape: 22*22*95, float32
             for h in range(outH):
                 for w in range(outW):
@@ -101,15 +104,15 @@ class ncnnModel:
                     # objScore: grid_value[4*numAnchor + index]
                     # clsScore: grid_value[5*numAnchor:]
                     # score: objScore * clsScore
-                    category = np.argmax(grid_value[5*numAnchor:])
-                    maxClsScore = grid_value[category + 5*numAnchor]
-                    for iA in range(numAnchor):
-                        score = maxClsScore * grid_value[4*numAnchor + iA]
+                    category = np.argmax(grid_value[5*self.numAnchor:])
+                    maxClsScore = grid_value[category + 5*self.numAnchor]
+                    for iA in range(self.numAnchor):
+                        score = maxClsScore * grid_value[4*self.numAnchor + iA]
                         if score > thresh:
                             bcx = ((grid_value[iA * 4 + 0] * 2 - 0.5) + w) * stride
                             bcy = ((grid_value[iA * 4 + 1] * 2 - 0.5) + h) * stride
-                            bw = ((grid_value[iA * 4 + 2] * 2) ** 2) * self.anchor[(i * numAnchor * 2) + iA * 2 + 0]
-                            bh = ((grid_value[iA * 4 + 3] * 2) ** 2) * self.anchor[(i * numAnchor * 2) + iA * 2 + 1]
+                            bw = ((grid_value[iA * 4 + 2] * 2) ** 2) * self.anchor[(i * self.numAnchor * 2) + iA * 2 + 0]
+                            bh = ((grid_value[iA * 4 + 3] * 2) ** 2) * self.anchor[(i * self.numAnchor * 2) + iA * 2 + 1]
 
                             x_left = (bcx - 0.5 * bw) * scaleW
                             y_top = (bcy - 0.5 * bh) * scaleH
@@ -125,19 +128,19 @@ class ncnnModel:
         mat_in = ncnn.Mat.from_pixels_resize(
             img,
             ncnn.Mat.PixelType.PIXEL_BGR,
-            input_img.shape[1],
-            input_img.shape[0],
-            inputShape,
-            inputShape,
+            img.shape[1],
+            img.shape[0],
+            self.input_shape,
+            self.input_shape,
         )
         mat_in.substract_mean_normalize(self.mean_vals, self.norm_vals)
-        ex.create_extractor()
+        
         # feed data to model
-        ex.input(self.input_name, mat_in)
+        self.ex.input(self.input_name, mat_in)
         # inference
         mat_out_list = []
-        for outname in output_name:
-            ret, mat = ex.extract(outname)
+        for outname in self.output_name:
+            ret, mat = self.ex.extract(outname)
             mat_out_list.append(mat)
         # prediction postprocess
         result = self.predHandle(mat_out_list, img.shape[1]/self.input_shape, img.shape[0]/self.input_shape, self.detThresh)
