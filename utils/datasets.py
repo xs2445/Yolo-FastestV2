@@ -113,7 +113,7 @@ class TensorDataset():
         else:
             label_path = img_path.split(".")[0] + ".txt"
         #####
-
+        
         # 归一化操作
         img = cv2.imread(img_path)
         img = cv2.resize(img, (self.img_size_width, self.img_size_height), interpolation = cv2.INTER_LINEAR) 
