@@ -28,12 +28,21 @@ if __name__ == '__main__':
     opt = parser.parse_args()
     cfg = utils.utils.load_datafile(opt.data)
 
-    save_path = '/content/gdrive/MyDrive/cu/22summer/lab/code/ObjectDetection/yolo-fastest-v2/23-08-2022'
+    save_path = '/content/gdrive/MyDrive/cu/22summer/lab/code/ObjectDetection/yolo-fastest-v2/23-08-2022/2'
     if save_path == None or not os.path.exists(save_path):
         save_path = 'weight'
-        print("Model save path not sapecified, will save to /{}".format(save_path))
+        print("Model save path not sapecified, will save to ./{}".format(save_path))
     else:
         print("Model save path: {}".format(save_path))
+
+    log_path = '/content/gdrive/MyDrive/cu/22summer/lab/code/ObjectDetection/yolo-fastest-v2/23-08-2022/2/log.txt'
+    if log_path == None or not os.path.exists(os.path.dirname(log_path)):
+        log_path = 'weight'
+        print("Log path not sapecified, will save to ./{}".format(log_path))
+    else:
+        with open(log_path, 'w') as f:
+            pass
+        print("Log path: {}".format(log_path))
 
     print("训练配置:")
     print(cfg)
@@ -139,8 +148,7 @@ if __name__ == '__main__':
             batch_num += 1
 
         # 模型保存
-        # if epoch % 10 == 0 and epoch > 0:
-        if epoch % 10 == 0:
+        if epoch % 10 == 0 and epoch > 0:
             model.eval()
             #模型评估
             print("computer mAP...")
@@ -148,11 +156,13 @@ if __name__ == '__main__':
             print("computer PR...")
             precision, recall, _, f1 = utils.utils.evaluation(val_dataloader, cfg, model, device, 0.3)
             print("Precision:%f Recall:%f AP:%f F1:%f"%(precision, recall, AP, f1))
-
-            torch.save(model.state_dict(), os.path.join(save_path, "%s-%d-epoch-%fap-model.pth") %
-                      (cfg["model_name"], epoch, AP))
-
-            print('Model Saved to {}'.format(os.path.join(save_path, "%s-%d-epoch-%fap-model.pth")))
+            model_save_path = os.path.join(save_path, 
+              "%s-%d-epoch-%fap-model.pth" % (cfg["model_name"], epoch, AP)) 
+            torch.save(model.state_dict(), model_save_path)
+            print('Model Saved to {}'.format(model_save_path))
+            with open(log_path, 'a') as f:
+                f.write("Time:%f Epoch:%d Precision:%f Recall:%f AP:%f F1:%f\n"%(time.time(), epoch, precision, recall, AP, f1))
+            
 
         # 学习率调整
         scheduler.step()
