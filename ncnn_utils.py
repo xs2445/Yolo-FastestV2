@@ -3,15 +3,29 @@ import cv2
 import numpy as np
 from utils.utils import load_datafile
 
+
+BOXCOLOR = {
+    0: (255,0,0),
+    1: (0,255,0),
+    2: (0,0,255)
+}
+
+CLSTHRESH = {
+    0: 0.6, # person
+    1: 0.5, # bottle
+    2: 0.1  # smoke
+}
+
 def draw_boxes(img, box_list):
     img_boxed = img.copy()
     for box in box_list:
-        cv2.rectangle(
-            img_boxed,
-            (box.x_left, box.y_top),
-            (box.x_right, box.y_down),
-            (255, 0, 0),
-        )
+        if box.score >= CLSTHRESH[box.category]:
+            cv2.rectangle(
+                img_boxed,
+                (box.x_left, box.y_top),
+                (box.x_right, box.y_down),
+                BOXCOLOR[box.category],
+            )
         # text = "%s %.1f%%" % (box.category, box.score*100)
         # label_size, baseLine = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 1)
     return img_boxed
@@ -30,7 +44,7 @@ def IoU(box_a, box_b):
     return interArea / (box_a.area() + box_b.area() - interArea)
 
 
-def NMS(box_list, iou_thresh, top_k=-1, candidate_size=200):
+def NMS(box_list, iou_thresh, top_k=-1, candidate_size=500):
     # ascending sort
     sortFunc = lambda box: box.score
     box_list.sort(key=sortFunc)
@@ -81,7 +95,6 @@ class ncnnModel:
         self.net = ncnn.Net()
         self.net.load_param(param_path)
         self.net.load_model(bin_path)
-        self.ex = self.net.create_extractor()
         cfg = load_datafile(datafile_path)
         self.anchor = cfg["anchors"]
         self.numAnchor = cfg["anchor_num"]
@@ -136,11 +149,12 @@ class ncnnModel:
         mat_in.substract_mean_normalize(self.mean_vals, self.norm_vals)
         
         # feed data to model
-        self.ex.input(self.input_name, mat_in)
+        ex = self.net.create_extractor()
+        ex.input(self.input_name, mat_in)
         # inference
         mat_out_list = []
         for outname in self.output_name:
-            ret, mat = self.ex.extract(outname)
+            ret, mat = ex.extract(outname)
             mat_out_list.append(mat)
         # prediction postprocess
         result = self.predHandle(mat_out_list, img.shape[1]/self.input_shape, img.shape[0]/self.input_shape, self.detThresh)
