@@ -3,6 +3,7 @@ import math
 import time
 import argparse
 import numpy as np
+from numpy.lib.npyio import _save_dispatcher
 from tqdm import tqdm
 from numpy.testing._private.utils import print_assert_equal
 
@@ -26,6 +27,13 @@ if __name__ == '__main__':
                         help='Specify training profile *.data')
     opt = parser.parse_args()
     cfg = utils.utils.load_datafile(opt.data)
+
+    save_path = '/content/gdrive/MyDrive/cu/22summer/lab/code/ObjectDetection/yolo-fastest-v2/23-08-2022'
+    if save_path == None or not os.path.exists(save_path):
+        save_path = 'weight'
+        print("Model save path not sapecified, will save to /{}".format(save_path))
+    else:
+        print("Model save path: {}".format(save_path))
 
     print("训练配置:")
     print(cfg)
@@ -131,7 +139,8 @@ if __name__ == '__main__':
             batch_num += 1
 
         # 模型保存
-        if epoch % 10 == 0 and epoch > 0:
+        # if epoch % 10 == 0 and epoch > 0:
+        if epoch % 10 == 0:
             model.eval()
             #模型评估
             print("computer mAP...")
@@ -140,8 +149,10 @@ if __name__ == '__main__':
             precision, recall, _, f1 = utils.utils.evaluation(val_dataloader, cfg, model, device, 0.3)
             print("Precision:%f Recall:%f AP:%f F1:%f"%(precision, recall, AP, f1))
 
-            torch.save(model.state_dict(), "weights/%s-%d-epoch-%fap-model.pth" %
+            torch.save(model.state_dict(), os.path.join(save_path, "%s-%d-epoch-%fap-model.pth") %
                       (cfg["model_name"], epoch, AP))
+
+            print('Model Saved to {}'.format(os.path.join(save_path, "%s-%d-epoch-%fap-model.pth")))
 
         # 学习率调整
         scheduler.step()
