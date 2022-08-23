@@ -8,6 +8,7 @@ from tqdm import tqdm
 from numpy.testing._private.utils import print_assert_equal
 
 import torch
+import torch.nn as nn
 from torch import optim
 from torch.utils.data import dataset
 from numpy.core.fromnumeric import shape
@@ -17,7 +18,7 @@ from torchsummary import summary
 import utils.loss
 import utils.utils
 import utils.datasets
-import model.detector
+import model.detector as Detectors
 
 
 if __name__ == '__main__':
@@ -83,16 +84,27 @@ if __name__ == '__main__':
     if premodel_path != None and os.path.exists(premodel_path):
         load_param = True
 
+    
     # 初始化模型结构
-    model = model.detector.Detector(cfg["classes"], cfg["anchor_num"], load_param).to(device)
-    summary(model, input_size=(3, cfg["height"], cfg["width"]))
+    model = Detectors.Detector(cfg["classes"], cfg["anchor_num"], load_param)
 
     # 加载预训练模型参数
     if load_param == True:
+        if 'coco' in premodel_path:
+            numClass = 80
+        elif 'dla' in premodel_path:
+            numClass = 3
+        else:
+            raise("Please specify number of classes!")
+        model = Detectors.Detector(numClass, cfg["anchor_num"], load_param)
         model.load_state_dict(torch.load(premodel_path, map_location=device), strict = False)
-        print("Load finefune model param: %s" % premodel_path)
+        model.output_cls_layers = nn.Conv2d(72, cfg["classes"], 1, 1, 0, bias=True)
+        print("Loaded finefune model param: %s" % premodel_path)
     else:
         print("Initialize weights: model/backbone/backbone.pth")
+    
+    model.to(device)
+    summary(model, input_size=(3, cfg["height"], cfg["width"]))
 
     # 构建SGD优化器
     optimizer = optim.SGD(params=model.parameters(),
