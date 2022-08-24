@@ -16,7 +16,7 @@ def main():
         input_shape=352
     )
     
-    name_list = glob.glob('./data/test/*.png') * 2
+    name_list = glob.glob('./data/test/*.png')
 
     t_s = time.time()
     for input_name in name_list:

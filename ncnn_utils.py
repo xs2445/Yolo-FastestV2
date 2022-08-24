@@ -151,6 +151,11 @@ class ncnnModel:
         self.net = ncnn.Net()
         self.net.load_param(param_path)
         self.net.load_model(bin_path)
+        # enable vulkan acceleration
+        # self.net.opt.use_vulkan_compute = True
+        # enable bf16s acceleration
+        self.net.opt.use_bf16_storage = True
+        self.net.opt.use_packing_layout = True
         cfg = load_datafile(datafile_path)
         self.anchor = cfg["anchors"]
         self.numAnchor = cfg["anchor_num"]
