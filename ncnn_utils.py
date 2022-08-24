@@ -1,8 +1,7 @@
 import ncnn
 import cv2
 import numpy as np
-from utils.utils import load_datafile
-
+import os
 
 BOXCOLOR = {
     0: (255,0,0),
@@ -29,6 +28,63 @@ def draw_boxes(img, box_list):
         # text = "%s %.1f%%" % (box.category, box.score*100)
         # label_size, baseLine = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 1)
     return img_boxed
+
+
+#加载data
+def load_datafile(data_path):
+    #需要配置的超参数
+    cfg = {"model_name":None,
+    
+           "epochs": None,
+           "steps": None,           
+           "batch_size": None,
+           "subdivisions":None,
+           "learning_rate": None,
+
+           "pre_weights": None,        
+           "classes": None,
+           "width": None,
+           "height": None,           
+           "anchor_num": None,
+           "anchors": None,
+
+           "val": None,           
+           "train": None,
+           "names":None
+        }
+
+    assert os.path.exists(data_path), "请指定正确配置.data文件路径"
+
+    #指定配置项的类型
+    list_type_key = ["anchors", "steps"]
+    str_type_key = ["model_name", "val", "train", "names", "pre_weights"]
+    int_type_key = ["epochs", "batch_size", "classes", "width",
+                   "height", "anchor_num", "subdivisions"]
+    float_type_key = ["learning_rate"]
+    
+    #加载配置文件
+    with open(data_path, 'r') as f:
+        for line in f.readlines():
+            if line == '\n' or line[0] == "[":
+                continue
+            else:
+                data = line.strip().split("=")
+                #配置项类型转换
+                if data[0] in cfg:
+                    if data[0] in int_type_key:
+                       cfg[data[0]] = int(data[1])
+                    elif data[0] in str_type_key:
+                        cfg[data[0]] = data[1]
+                    elif data[0] in float_type_key:
+                        cfg[data[0]] = float(data[1])
+                    elif data[0] in list_type_key:
+                        cfg[data[0]] = [float(x) for x in data[1].split(",")]
+                    else:
+                        print("配置文件有错误的配置项")
+                else:
+                    print("%s配置文件里有无效配置项:%s"%(data_path, data))
+    return cfg
+
 
 def intersectionArea(box_a, box_b):
     # no intersection
@@ -100,6 +156,7 @@ class ncnnModel:
         self.numAnchor = cfg["anchor_num"]
         self.detThresh = detThresh
         self.nmsThresh = nmsThresh
+        self.num_threads = 6
 
     def predHandle(self, mat_out_list, scaleW, scaleH, thresh):
         resultBoxes = []
@@ -150,6 +207,7 @@ class ncnnModel:
         
         # feed data to model
         ex = self.net.create_extractor()
+        ex.set_num_threads(self.num_threads)
         ex.input(self.input_name, mat_in)
         # inference
         mat_out_list = []
