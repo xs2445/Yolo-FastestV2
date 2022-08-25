@@ -20,7 +20,8 @@ def load_datafile(data_path):
            "subdivisions":None,
            "learning_rate": None,
 
-           "pre_weights": None,        
+           "pre_weights": None,
+           "pre_classes": None,   
            "classes": None,
            "width": None,
            "height": None,           
@@ -29,16 +30,17 @@ def load_datafile(data_path):
 
            "val": None,           
            "train": None,
-           "names":None
+           "names":None,
+           "save_path":None
         }
 
     assert os.path.exists(data_path), "请指定正确配置.data文件路径"
 
     #指定配置项的类型
     list_type_key = ["anchors", "steps"]
-    str_type_key = ["model_name", "val", "train", "names", "pre_weights"]
+    str_type_key = ["model_name", "val", "train", "names", "pre_weights", "save_path"]
     int_type_key = ["epochs", "batch_size", "classes", "width",
-                   "height", "anchor_num", "subdivisions"]
+                   "height", "anchor_num", "subdivisions", "pre_classes"]
     float_type_key = ["learning_rate"]
     
     #加载配置文件
