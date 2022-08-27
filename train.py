@@ -31,7 +31,7 @@ if __name__ == '__main__':
 
     save_path = cfg["save_path"]
     if save_path == None or not os.path.exists(save_path):
-        save_path = 'weight'
+        save_path = 'weights'
         print("Model save path not sapecified, will save to ./{}".format(save_path))
     else:
         print("Model save path: {}".format(save_path))
