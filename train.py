@@ -38,7 +38,7 @@ if __name__ == '__main__':
 
     log_path = os.path.join(save_path, 'log.txt')
     if log_path == None or not os.path.exists(os.path.dirname(log_path)):
-        log_path = 'weight'
+        log_path = 'weights'
         print("Log path not sapecified, will save to ./{}".format(log_path))
     else:
         with open(log_path, 'w') as f:
