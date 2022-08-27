@@ -29,14 +29,14 @@ if __name__ == '__main__':
     opt = parser.parse_args()
     cfg = utils.utils.load_datafile(opt.data)
 
-    save_path = '/content/gdrive/MyDrive/cu/22summer/lab/code/ObjectDetection/yolo-fastest-v2/23-08-2022/2'
+    save_path = cfg["save_path"]
     if save_path == None or not os.path.exists(save_path):
         save_path = 'weight'
         print("Model save path not sapecified, will save to ./{}".format(save_path))
     else:
         print("Model save path: {}".format(save_path))
 
-    log_path = '/content/gdrive/MyDrive/cu/22summer/lab/code/ObjectDetection/yolo-fastest-v2/23-08-2022/2/log.txt'
+    log_path = os.path.join(save_path, 'log.txt')
     if log_path == None or not os.path.exists(os.path.dirname(log_path)):
         log_path = 'weight'
         print("Log path not sapecified, will save to ./{}".format(log_path))
@@ -83,24 +83,20 @@ if __name__ == '__main__':
     premodel_path = cfg["pre_weights"]
     if premodel_path != None and os.path.exists(premodel_path):
         load_param = True
-
+        numClass = cfg["pre_classes"]
+    else:
+        numClass = cfg["classes"]
     
-    # 初始化模型结构
-    model = Detectors.Detector(cfg["classes"], cfg["anchor_num"], load_param)
+    model = Detectors.Detector(numClass, cfg["anchor_num"], load_param)
 
     # 加载预训练模型参数
     if load_param == True:
-        if 'coco' in premodel_path:
-            numClass = 80
-        elif 'dla' in premodel_path:
-            numClass = 3
-        else:
-            raise("Please specify number of classes!")
-        model = Detectors.Detector(numClass, cfg["anchor_num"], load_param)
         model.load_state_dict(torch.load(premodel_path, map_location=device), strict = False)
-        model.output_cls_layers = nn.Conv2d(72, cfg["classes"], 1, 1, 0, bias=True)
+        if numClass != cfg["classes"]:
+            model.output_cls_layers = nn.Conv2d(72, cfg["classes"], 1, 1, 0, bias=True)
         print("Loaded finefune model param: %s" % premodel_path)
     else:
+        # 初始化模型结构
         print("Initialize weights: model/backbone/backbone.pth")
     
     model.to(device)
