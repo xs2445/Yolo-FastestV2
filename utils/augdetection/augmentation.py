@@ -1,5 +1,3 @@
-%cd /content/Yolo-FastestV2-NCNN-RasPi4B/
-
 import glob 
 import os
 import cv2
