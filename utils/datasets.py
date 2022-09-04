@@ -7,6 +7,8 @@ import torch
 from torch.utils import data
 from torch.utils.data import Dataset
 
+import augdetection
+
 def contrast_and_brightness(img):
     alpha = random.uniform(0.25, 1.75)
     beta = random.uniform(0.25, 1.75)
@@ -120,6 +122,7 @@ class TensorDataset():
         #数据增强
         if self.imgaug == True:
             img = img_aug(img)
+        # channel first
         img = img.transpose(2,0,1)
 
         # 加载label文件
@@ -145,7 +148,8 @@ class TensorDataset():
 
 
 if __name__ == "__main__":
-    data = TensorDataset("/home/xuehao/Desktop/TMP/pytorch-yolo/widerface/train.txt")
-    img, label = data.__getitem__(0)
-    print(img.shape)
-    print(label.shape)
+    # data = TensorDataset("/home/xuehao/Desktop/TMP/pytorch-yolo/widerface/train.txt")
+    # img, label = data.__getitem__(0)
+    # print(img.shape)
+    # print(label.shape)
+    pass

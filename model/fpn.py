@@ -38,7 +38,7 @@ class LightFPN(nn.Module):
                                        )
 
         self.conv1x1_3 = nn.Sequential(nn.Conv2d(input3_depth, out_depth, 1, 1, 0, bias = False),
-                                       nn.BatchNorm2d(out_depth),
+                                       nn.BatchNorm2d(out_depth), 
                                        nn.ReLU(inplace=True)
                                        )
         
