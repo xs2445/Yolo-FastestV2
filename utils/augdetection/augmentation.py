@@ -2,13 +2,13 @@ import glob
 import os
 import cv2
 import random
-from google.colab.patches import cv2_imshow
 import numpy as np
 import matplotlib.pyplot as plt
 import math
 
 
-def xywh2xyxy(x, w=None, h=None):
+
+def _xywh2xyxy(x, w=None, h=None):
     # Convert nx4 boxes from [x, y, w, h] to [x1, y1, x2, y2] where xy1=top-left, xy2=bottom-right
     if x is None:
         return x
@@ -16,46 +16,56 @@ def xywh2xyxy(x, w=None, h=None):
         assert w is not None and h is not None, "Only got either h, w."
     else:
         w = h = 1
-    y = np.zeros_like(x).astype(np.float32)
-    y[:, 0] = (x[:, 0] - x[:, 2] / 2) * w  # top left x
-    y[:, 1] = (x[:, 1] - x[:, 3] / 2) * h  # top left y
-    y[:, 2] = (x[:, 0] + x[:, 2] / 2) * w  # bottom right x
-    y[:, 3] = (x[:, 1] + x[:, 3] / 2) * h  # bottom right y
+    y = x.copy()
+    a=1
+    y[:, 0+a] = (x[:, 0+a] - x[:, 2+a] / 2) * w  # top left x
+    y[:, 1+a] = (x[:, 1+a] - x[:, 3+a] / 2) * h  # top left y
+    y[:, 2+a] = (x[:, 0+a] + x[:, 2+a] / 2) * w  # bottom right x
+    y[:, 3+a] = (x[:, 1+a] + x[:, 3+a] / 2) * h  # bottom right y
     return y
 
-def xyxy2xywh(x, w=None, h=None):
+def _xyxy2xywh(x, w=None, h=None):
     if x is None:
          return x
     if w is not None or h is not None:
         assert w is not None and h is not None, "Only got either h, w."
     else:
         w = h = 1
-    y = np.zeros_like(x).astype(np.float32)
-    y[:, 0] = ((x[:,0] + x[:,2]) / 2) / w   # x
-    y[:, 1] = ((x[:,1] + x[:,3]) / 2) / h   # y
-    y[:, 2] = (x[:,2] - x[:,0]) / w         # w
-    y[:, 3] = (x[:,3] - x[:,1]) / h         # h
+    y = x.copy()
+    a=1
+    y[:, 0+a] = ((x[:,0+a] + x[:,2+a]) / 2) / w   # x
+    y[:, 1+a] = ((x[:,1+a] + x[:,3+a]) / 2) / h   # y
+    y[:, 2+a] = (x[:,2+a] - x[:,0+a]) / w         # w
+    y[:, 3+a] = (x[:,3+a] - x[:,1+a]) / h         # h
     return y
 
-def draw_boxes(img, box_ary, color=(255,0,255)):
+
+
+
+def _draw_boxes(img, box_ary, color=(255,0,255)):
+    colors = {
+        0: (255,0,0),
+        1: (0,255,0),
+        2: (0,0,255)
+    }
     h, w = img.shape[:2]
     img_boxed = img.copy()
     for box in box_ary:
         cv2.rectangle(
             img_boxed,
-            (int(box[0]*w), int(box[1]*h)),
-            (int(box[2]*w), int(box[3]*h)),
-            color,
+            (int(box[1]*w), int(box[2]*h)),
+            (int(box[3]*w), int(box[4]*h)),
+            colors[box[0]],
             2
         )
     return img_boxed
 
 
-def bbox_area_xyxy(bbox):
-    return (bbox[:,2] - bbox[:,0])*(bbox[:,3] - bbox[:,1])
+def _bbox_area_xyxy(bbox):
+    return (bbox[:,3] - bbox[:,1])*(bbox[:,4] - bbox[:,2])
 
-def bbox_area_xywh(bbox):
-    return bbox[:,2]*bbox[:,3]
+def _bbox_area_xywh(bbox):
+    return bbox[:,3]*bbox[:,4]
 
 
 class AffineTransformation():
@@ -73,7 +83,7 @@ class AffineTransformation():
         trans_mat = np.squeeze(warp_mat[:,-1])
         new_bboxes = []
         for bbox in bboxes:
-            x1,y1,x2,y2 = bbox
+            l,x1,y1,x2,y2 = bbox
             points = np.array([
                 [x1, y1],
                 [x2, y1],
@@ -83,31 +93,36 @@ class AffineTransformation():
             points_warp = points @ rot_mat.T + trans_mat
             x1, y1 = points_warp.min(axis=0)
             x2, y2 = points_warp.max(axis=0)
-            new_bboxes.append([x1, y1, x2, y2])
+            new_bboxes.append([l, x1, y1, x2, y2])
 
         return np.array(new_bboxes)
     
-    @classmethod
-    def affineTransform(cls, img, bboxes, warp_mat):
-        img = cls.affineImage(img)
-        bboxes = cls.affineBox(bboxes)
-        bboxes = cls.clipBox(bboxes, cls.thresh_a)
-        return img, bboxes
+    # @classmethod
+    # def affineTransform(cls, img, bboxes, warp_mat):
+    #     img = cls.affineImage(img, warp_mat)
+    #     bboxes = cls.affineBox(bboxes, warp_mat)
+    #     bboxes = cls.clipBox(bboxes, cls.thresh_a)
+    #     return img, bboxes
     
     @staticmethod
-    def clipBox(bboxes, bboxes_original, thresh_a=0.1, thresh_b=0.25, thresh_area=0.02):
+    def clipBox(bboxes, bboxes_original, thresh_a, thresh_b, thresh_area=0.05):
         # pass in xyxy bboxes
-        area_original = bbox_area_xyxy(bboxes_original)
-        area_unclip = bbox_area_xyxy(bboxes)
-        bboxes = np.clip(bboxes, 0, 1)
-        area = bbox_area_xyxy(bboxes)
-        bboxes = [x for i, x in enumerate(bboxes) if area[i] > thresh_area**2 and area[i]/area_unclip[i] > thresh_b and  area[i]/area_original[i] >= thresh_a]
+        area_original = _bbox_area_xyxy(bboxes_original)
+        area_unclip = _bbox_area_xyxy(bboxes)
+        bboxes[:,1:] = np.clip(bboxes[:,1:], 0, 1)
+        area = _bbox_area_xyxy(bboxes)
+        # bboxes = [x for i, x in enumerate(bboxes) if area[i] > thresh_area**2 and area[i]/area_unclip[i] > thresh_b and  area[i]/area_original[i] >= thresh_a]
+        new_bboxes = []
+        for i, x in enumerate(bboxes):
+            if area[i] > thresh_area**2:
+                if area[i]/area_unclip[i] > thresh_b and  area[i]/area_original[i] >= thresh_a:
+                    new_bboxes.append(x)
 
-        return np.array(bboxes)
+        return np.array(new_bboxes)
 
 
 class RandomTranslation(AffineTransformation):
-    def __init__(self, translate = 0.2, thresh_a=0.1, thresh_b=0.25, diff = False, prob=0.5):
+    def __init__(self, translate = 0.2, thresh_a=0.1, thresh_b=0.25, diff = True, prob=0.5):
         self.translate = translate
         self.thresh_a = thresh_a
         self.thresh_b = thresh_b
@@ -119,10 +134,10 @@ class RandomTranslation(AffineTransformation):
             assert self.translate > 0 and self.translate < 1
             self.translate = (-self.translate, self.translate)
         self.diff = diff
-        self.prob = 0.5
+        self.prob = prob
 
     def __call__(self, img, bboxes):
-        if random.uniform(0,1) < self.prob:
+        if random.uniform(0,1) <= self.prob:
             return self.operation(img, bboxes)
         else:
             return img, bboxes
@@ -139,11 +154,11 @@ class RandomTranslation(AffineTransformation):
         ])
         img_warp = self.affineImage(img, warp_mat)
         # input: xywh bbox
-        bboxes_original = xywh2xyxy(bboxes.copy())
-        bboxes = xywh2xyxy(bboxes)
-        bboxes += np.array([translate_factor_x, translate_factor_y, translate_factor_x, translate_factor_y])
+        bboxes_original = _xywh2xyxy(bboxes.copy())
+        bboxes = _xywh2xyxy(bboxes)
+        bboxes += np.array([0, translate_factor_x, translate_factor_y, translate_factor_x, translate_factor_y])
         bboxes = self.clipBox(bboxes, bboxes_original, thresh_a=self.thresh_a, thresh_b=self.thresh_b)
-        bboxes = xyxy2xywh(bboxes) if len(bboxes)>0 else None
+        bboxes = _xyxy2xywh(bboxes) if len(bboxes)>0 else None
             
         return img_warp, bboxes
 
@@ -157,7 +172,9 @@ class RandomRotation(AffineTransformation):
         self.prob = prob
 
     def __call__(self, img, bboxes):
-        if random.uniform(0,1) < self.prob:
+        if bboxes is None:
+            return img, bboxes 
+        if random.uniform(0,1) <= self.prob:
             return self.operation(img, bboxes)
         else:
             return img, bboxes
@@ -170,14 +187,15 @@ class RandomRotation(AffineTransformation):
             [math.sin(angle), math.cos(angle), h/2*(1-math.cos(angle))-w/2*math.sin(angle)]
         ])
         img_warp = self.affineImage(img, warp_mat)
-        bboxes_original = xywh2xyxy(bboxes.copy())
-        bboxes = self.affineBox(xywh2xyxy(bboxes, w, h), warp_mat)
-        bboxes[:,0] /= w
-        bboxes[:,1] /= h
-        bboxes[:,2] /= w
-        bboxes[:,3] /= h
+        bboxes_original = _xywh2xyxy(bboxes.copy())
+        bboxes = self.affineBox(_xywh2xyxy(bboxes, w, h), warp_mat)
+        bboxes[:,1] /= w
+        bboxes[:,2] /= h
+        bboxes[:,3] /= w
+        bboxes[:,4] /= h
         bboxes = self.clipBox(bboxes, bboxes_original, self.thresh_a, self.thresh_b)
-        bboxes = xyxy2xywh(bboxes)
+        
+        bboxes = _xyxy2xywh(bboxes) if len(bboxes) > 0 else None
 
         return img_warp, bboxes
 
@@ -191,7 +209,7 @@ class RandomScale(AffineTransformation):
         self.prob = prob
 
     def __call__(self, img, bboxes):
-        if random.uniform(0,1) < self.prob:
+        if random.uniform(0,1) <= self.prob:
             return self.operation(img, bboxes)
         else:
             return img, bboxes
@@ -206,10 +224,10 @@ class RandomScale(AffineTransformation):
         img_warp = self.affineImage(img, warp_mat)
         warp_mat[0,2] /= w
         warp_mat[1,2] /= h
-        bboxes_original = xywh2xyxy(bboxes.copy())
-        bboxes = self.affineBox(xywh2xyxy(bboxes), warp_mat)
+        bboxes_original = _xywh2xyxy(bboxes.copy())
+        bboxes = self.affineBox(_xywh2xyxy(bboxes), warp_mat)
         bboxes = self.clipBox(bboxes, bboxes_original, thresh_a=self.thresh_a, thresh_b=self.thresh_b)
-        bboxes = xyxy2xywh(bboxes) if len(bboxes)>0 else None
+        bboxes = _xyxy2xywh(bboxes) if len(bboxes)>0 else None
 
         return img_warp, bboxes
 
@@ -219,13 +237,13 @@ class RandomHorizontalFlip():
         self.prob = prob
 
     def __call__(self, img, bboxes):
-        if random.uniform(0,1) < self.prob:
+        if random.uniform(0,1) <= self.prob:
             return self.operation(img, bboxes)
         else:
             return img, bboxes
     
     def operation(self, img, bboxes):
-        bboxes[:,0] = 1 - bboxes[:,0]
+        bboxes[:,1] = 1 - bboxes[:,1]
         return img[:,::-1], bboxes
 
 
@@ -236,7 +254,7 @@ class RandomContrastBrightness():
         self.prob = prob
     
     def __call__(self, img, bboxes):
-        if random.uniform(0,1) < self.prob:
+        if random.uniform(0,1) <= self.prob:
             return self.operation(img), bboxes
         else:
             return img, bboxes
@@ -258,7 +276,7 @@ class RandomMotionBlur():
         self.prob = prob
 
     def __call__(self, img, bboxes):
-        if random.uniform(0,1) < self.prob:
+        if random.uniform(0,1) <= self.prob:
             return self.operation(img), bboxes
         else:
             return img, bboxes
@@ -288,7 +306,7 @@ class RandomHSV():
         self.prob = prob
 
     def __call__(self, img, bboxes):
-        if random.uniform(0,1) < self.prob:
+        if random.uniform(0,1) <= self.prob:
             return self.operation(img), bboxes
         else:
             return img, bboxes
@@ -313,7 +331,7 @@ class AugmentationSequence():
         self.prob = prob
     
     def __call__(self, img, bboxes):
-        if random.uniform(0,1) < self.prob:
+        if random.uniform(0,1) <= self.prob:
             for func in self.operation_list:
                 img, bboxes = func(img, bboxes)
 
@@ -327,7 +345,7 @@ if __name__ == '__main__':
     train_file = open('./data/train.txt', 'w+')
 
     random.shuffle(img_list)
-    for i in range(5):
+    for i in range(10):
         train_file.write(img_list[i] + '\n')
         file_name = img_list[i].replace('png', 'txt').replace('jpg','txt')
         # get label
@@ -335,25 +353,30 @@ if __name__ == '__main__':
         with open(file_name, 'r') as f:
             for line in f.readlines():
                 l = line.strip().split(" ")
-                label.append([l[i] for i in range(1,5)])
+                label.append([l[i] for i in range(0,5)])
         label = np.array(label, dtype=np.float32)
+        # print(label)
         # get img
         img = cv2.cvtColor(cv2.imread(img_list[i]), cv2.COLOR_BGR2RGB)
         # augmentation
+        prob=1
         augseq = AugmentationSequence([
-            RandomHorizontalFlip(0.3),
-            RandomScale(0.8),
-            RandomRotation(15),
-            RandomTranslation(0.1),
-            RandomContrastBrightness(),
-            RandomMotionBlur(),
-            RandomHSV(),
-        ], prob=0.7)
+            RandomHorizontalFlip(prob=prob),
+            RandomScale(0.8, prob=prob),
+            RandomRotation(15, prob=prob),
+            RandomTranslation(0.1, prob=prob),
+            RandomContrastBrightness(prob=prob),
+            RandomMotionBlur(prob=prob),
+            RandomHSV(prob=prob),
+        ], prob=prob)
         img_aug, label_aug = augseq(img.copy(), label.copy())
+        # print(label)
+        print(np.isclose(label[:,0], label_aug[:,0]) if label.shape == label_aug.shape else 'dim diff')
+        print()
         # draw boxes
-        img = draw_boxes(img, xywh2xyxy(label))
+        img = _draw_boxes(img, _xywh2xyxy(label))
         if label_aug is not None:
-            img_aug = draw_boxes(img_aug, xywh2xyxy(label_aug), color=(0,255,0))
+            img_aug = _draw_boxes(img_aug, _xywh2xyxy(label_aug), color=(0,255,0))
         # plot
         fig, axs = plt.subplots(1, 2, figsize=(10, 3))
         axs[0].imshow(img)
