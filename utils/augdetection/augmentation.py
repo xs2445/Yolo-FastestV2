@@ -137,7 +137,7 @@ class RandomTranslation(AffineTransformation):
         self.prob = prob
 
     def __call__(self, img, bboxes):
-        if random.uniform(0,1) <= self.prob:
+        if random.uniform(0,1) <= self.prob and bboxes is not None:
             return self.operation(img, bboxes)
         else:
             return img, bboxes
@@ -174,7 +174,7 @@ class RandomRotation(AffineTransformation):
     def __call__(self, img, bboxes):
         if bboxes is None:
             return img, bboxes 
-        if random.uniform(0,1) <= self.prob:
+        if random.uniform(0,1) <= self.prob and bboxes is not None:
             return self.operation(img, bboxes)
         else:
             return img, bboxes
@@ -209,7 +209,7 @@ class RandomScale(AffineTransformation):
         self.prob = prob
 
     def __call__(self, img, bboxes):
-        if random.uniform(0,1) <= self.prob:
+        if random.uniform(0,1) <= self.prob and bboxes is not None:
             return self.operation(img, bboxes)
         else:
             return img, bboxes
@@ -237,7 +237,7 @@ class RandomHorizontalFlip():
         self.prob = prob
 
     def __call__(self, img, bboxes):
-        if random.uniform(0,1) <= self.prob:
+        if random.uniform(0,1) <= self.prob and bboxes is not None:
             return self.operation(img, bboxes)
         else:
             return img, bboxes
@@ -254,7 +254,7 @@ class RandomContrastBrightness():
         self.prob = prob
     
     def __call__(self, img, bboxes):
-        if random.uniform(0,1) <= self.prob:
+        if random.uniform(0,1) <= self.prob and bboxes is not None:
             return self.operation(img), bboxes
         else:
             return img, bboxes
@@ -276,7 +276,7 @@ class RandomMotionBlur():
         self.prob = prob
 
     def __call__(self, img, bboxes):
-        if random.uniform(0,1) <= self.prob:
+        if random.uniform(0,1) <= self.prob and bboxes is not None:
             return self.operation(img), bboxes
         else:
             return img, bboxes
@@ -306,7 +306,7 @@ class RandomHSV():
         self.prob = prob
 
     def __call__(self, img, bboxes):
-        if random.uniform(0,1) <= self.prob:
+        if random.uniform(0,1) <= self.prob and bboxes is not None:
             return self.operation(img), bboxes
         else:
             return img, bboxes
@@ -331,7 +331,7 @@ class AugmentationSequence():
         self.prob = prob
     
     def __call__(self, img, bboxes):
-        if random.uniform(0,1) <= self.prob:
+        if random.uniform(0,1) <= self.prob and bboxes is not None:
             for func in self.operation_list:
                 img, bboxes = func(img, bboxes)
 
