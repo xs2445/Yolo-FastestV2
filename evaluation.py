@@ -3,31 +3,23 @@ import torch
 import argparse
 from tqdm import tqdm
 
-
 from torchsummary import summary
 
 import utils.utils
 import utils.datasets
-import model.detector
+import model.detector as detector
 
-if __name__ == '__main__':
-    # 指定训练配置文件
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--data', type=str, default='',
-                        help='Specify training profile *.data')
-    parser.add_argument('--weights', type=str, default='',
-                        help='The path of the model')
-    opt = parser.parse_args()
-    cfg = utils.utils.load_datafile(opt.data)
 
-    assert os.path.exists(opt.weights), "请指定正确的模型路径"
+def evaluation(cfg, weights_path):
+
+    assert os.path.exists(weights_path), 'weights path does not exists.'
 
     #打印消息
-    print("评估配置:")
+    print("Configuration:")
     print("model_name:%s"%cfg["model_name"])
     print("width:%d height:%d"%(cfg["width"], cfg["height"]))
     print("val:%s"%(cfg["val"]))
-    print("model_path:%s"%(opt.weights))
+    # print("model_path:%s"%(weights_path))
     
     #加载数据
     val_dataset = utils.datasets.TensorDataset(cfg["val"], cfg["width"], cfg["height"], imgaug = False)
@@ -49,13 +41,13 @@ if __name__ == '__main__':
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     #初始化模型
-    model = model.detector.Detector(cfg["classes"], cfg["anchor_num"], True).to(device)
-    model.load_state_dict(torch.load(opt.weights, map_location=device))
+    model = detector.Detector(cfg["classes"], cfg["anchor_num"], True).to(device)
+    model.load_state_dict(torch.load(weights_path, map_location=device))
     #sets the module in eval node
     model.eval()
 
     #打印模型结构
-    summary(model, input_size=(3, cfg["height"], cfg["width"]))
+    # summary(model, input_size=(3, cfg["height"], cfg["width"]))
     
     #模型评估
     print("computer mAP...")
@@ -63,3 +55,18 @@ if __name__ == '__main__':
     print("computer PR...")
     precision, recall, _, f1 = utils.utils.evaluation(val_dataloader, cfg, model, device, 0.3)
     print("Precision:%f Recall:%f AP:%f F1:%f"%(precision, recall, AP, f1))
+    
+    return precision, recall, AP, f1
+
+
+if __name__ == '__main__':
+    # 指定训练配置文件
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--data', type=str, default='',
+                        help='Specify training profile *.data')
+    parser.add_argument('--weights', type=str, default='',
+                        help='The path of the model')
+    opt = parser.parse_args()
+    cfg = utils.utils.load_datafile(opt.data)
+
+    evaluation(cfg, opt.weights)
