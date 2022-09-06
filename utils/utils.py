@@ -52,7 +52,9 @@ def load_datafile(data_path):
                 data = line.strip().split("=")
                 #配置项类型转换
                 if data[0] in cfg:
-                    if data[0] in int_type_key:
+                    if data[1] == 'None':
+                        cfg[data[0]] = None
+                    elif data[0] in int_type_key:
                        cfg[data[0]] = int(data[1])
                     elif data[0] in str_type_key:
                         cfg[data[0]] = data[1]
