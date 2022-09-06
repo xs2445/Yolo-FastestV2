@@ -6,8 +6,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import math
 
-
-
 def _xywh2xyxy(x, w=None, h=None):
     # Convert nx4 boxes from [x, y, w, h] to [x1, y1, x2, y2] where xy1=top-left, xy2=bottom-right
     if x is None:
@@ -17,7 +15,7 @@ def _xywh2xyxy(x, w=None, h=None):
     else:
         w = h = 1
     y = x.copy()
-    a=1
+    a = 1
     y[:, 0+a] = (x[:, 0+a] - x[:, 2+a] / 2) * w  # top left x
     y[:, 1+a] = (x[:, 1+a] - x[:, 3+a] / 2) * h  # top left y
     y[:, 2+a] = (x[:, 0+a] + x[:, 2+a] / 2) * w  # bottom right x
@@ -32,17 +30,14 @@ def _xyxy2xywh(x, w=None, h=None):
     else:
         w = h = 1
     y = x.copy()
-    a=1
+    a = 1
     y[:, 0+a] = ((x[:,0+a] + x[:,2+a]) / 2) / w   # x
     y[:, 1+a] = ((x[:,1+a] + x[:,3+a]) / 2) / h   # y
     y[:, 2+a] = (x[:,2+a] - x[:,0+a]) / w         # w
     y[:, 3+a] = (x[:,3+a] - x[:,1+a]) / h         # h
     return y
 
-
-
-
-def _draw_boxes(img, box_ary, color=(255,0,255)):
+def _draw_boxes(img, box_ary):
     colors = {
         0: (255,0,0),
         1: (0,255,0),
@@ -60,13 +55,11 @@ def _draw_boxes(img, box_ary, color=(255,0,255)):
         )
     return img_boxed
 
-
 def _bbox_area_xyxy(bbox):
     return (bbox[:,3] - bbox[:,1])*(bbox[:,4] - bbox[:,2])
 
 def _bbox_area_xywh(bbox):
     return bbox[:,3]*bbox[:,4]
-
 
 class AffineTransformation():
     def __init__(self, thresh_a=0.25):

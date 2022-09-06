@@ -6,8 +6,13 @@ import numpy as np
 import torch
 from torch.utils import data
 from torch.utils.data import Dataset
+import torchvision.transforms as T
 
-import augdetection
+from utils.augdetection import augmentation as Tdet
+
+TorchNormalization = T.Compose([
+    T.ToTensor(),
+])
 
 def contrast_and_brightness(img):
     alpha = random.uniform(0.25, 1.75)
@@ -77,7 +82,7 @@ def collate_fn(batch):
     return torch.stack(img), torch.cat(label, 0)
 
 class TensorDataset():
-    def __init__(self, path, img_size_width = 352, img_size_height = 352, imgaug = False):
+    def __init__(self, path, img_size_width = 352, img_size_height = 352, imgaug = True):
         assert os.path.exists(path), "%s文件路径错误或不存在" % path
 
         self.path = path
@@ -86,18 +91,21 @@ class TensorDataset():
         self.img_size_height = img_size_height
         self.img_formats = ['bmp', 'jpg', 'jpeg', 'png']
         self.imgaug = imgaug
+        self.augSeq = Tdet.AugmentationSequence([
+                Tdet.RandomHorizontalFlip(0.3),
+                Tdet.RandomScale(0.8),
+                Tdet.RandomRotation(10),
+                Tdet.RandomTranslation(0.1),
+                Tdet.RandomContrastBrightness(),
+                Tdet.RandomMotionBlur(),
+                Tdet.RandomHSV(),
+            ], prob=0.5)
 
         # 数据检查
         with open(self.path, 'r') as f:
             for line in f.readlines():
                 data_path = line.strip()
-                #####
                 data_path = os.path.join(self.path.replace(".txt", ""), data_path)
-#                 if self.path == '.':
-#                     data_path = os.path.join(".".join(self.path.split(".")[:-1]), data_path)
-#                 else:
-#                     data_path = os.path.join(self.path.split(".")[0], data_path)
-                #####
                 if os.path.exists(data_path):
                     img_type = data_path.split(".")[-1]
                     if img_type not in self.img_formats:
@@ -118,30 +126,29 @@ class TensorDataset():
         
         # 归一化操作
         img = cv2.imread(img_path)
-        img = cv2.resize(img, (self.img_size_width, self.img_size_height), interpolation = cv2.INTER_LINEAR) 
-        #数据增强
-        if self.imgaug == True:
-            img = img_aug(img)
-        # channel first
-        img = img.transpose(2,0,1)
-
-        # 加载label文件
+        img = cv2.resize(img, (self.img_size_width, self.img_size_height), interpolation = cv2.INTER_LINEAR)
+        
+        # load annotation
         if os.path.exists(label_path):
             label = []
             with open(label_path, 'r') as f:
                 for line in f.readlines():
                     l = line.strip().split(" ")
-                    label.append([0, l[0], l[1], l[2], l[3], l[4]])
+                    label.append([l[i] for i in range(0,5)])
             label = np.array(label, dtype=np.float32)
-
             if label.shape[0]:
-                assert label.shape[1] == 6, '> 5 label columns: %s' % label_path
-                #assert (label >= 0).all(), 'negative labels: %s'%label_path
-                #assert (label[:, 1:] <= 1).all(), 'non-normalized or out of bounds coordinate labels: %s'%label_path
+                assert label.shape[1] == 5, '> 5 label columns: %s' % label_path
+                assert (label >= 0).all(), 'negative labels: %s'%label_path
+                assert (label[:, 1:] <= 1).all(), 'non-normalized or out of bounds coordinate labels: %s'%label_path
         else:
-            raise Exception("%s is not exist" % label_path)  
+            raise Exception("%s is not exist" % label_path)
+        # augmentation
+        if self.imgaug == True:
+            img, label = augseq(img, label)
         
-        return torch.from_numpy(img), torch.from_numpy(label)
+        label = np.pad(label, ((0, 0), (1,0)), 'constant', constant_values=(0))
+        
+        return TorchNormalization(img), torch.from_numpy(label)
 
     def __len__(self):
         return len(self.data_list)
