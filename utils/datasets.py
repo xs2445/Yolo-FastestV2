@@ -144,7 +144,7 @@ class TensorDataset():
             raise Exception("%s is not exist" % label_path)
         # augmentation
         if self.imgaug == True:
-            img, label = augseq(img, label)
+            img, label = self.augSeq(img, label)
         
         label = np.pad(label, ((0, 0), (1,0)), 'constant', constant_values=(0))
         
